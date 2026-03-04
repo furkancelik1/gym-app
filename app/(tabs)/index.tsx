@@ -1,98 +1,305 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { onAuthStateChanged, User } from "firebase/auth";
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { auth, db } from "../../firebaseConfig";
 
-export default function HomeScreen() {
+type Antrenman = {
+  id: string;
+  baslik: string;
+  sure: string;
+  seviye: string;
+  renk: string;
+  ikon: string;
+  userId: string;
+};
+
+export default function DashboardScreen() {
+  const router = useRouter();
+
+  const [kullanici, setKullanici] = useState<User | null>(null);
+  const [antrenmanlar, setAntrenmanlar] = useState<Antrenman[]>([]);
+  const [yukleniyor, setYukleniyor] = useState(true);
+  const [yeniBaslik, setYeniBaslik] = useState("");
+  const [ekleniyor, setEkleniyor] = useState(false);
+
+  useEffect(() => {
+    const abonelik = onAuthStateChanged(auth, async (mevcutKullanici) => {
+      if (mevcutKullanici) {
+        setKullanici(mevcutKullanici);
+        try {
+          const q = query(
+            collection(db, "antrenmanlar"),
+            where("userId", "==", mevcutKullanici.uid),
+          );
+
+          const querySnapshot = await getDocs(q);
+          const geciciDizi: Antrenman[] = [];
+          querySnapshot.forEach((doc) => {
+            geciciDizi.push({ id: doc.id, ...doc.data() } as Antrenman);
+          });
+
+          setAntrenmanlar(geciciDizi);
+        } catch (hata) {
+          console.error("Veri çekilirken hata: ", hata);
+        }
+      } else {
+        router.replace("/");
+      }
+      setYukleniyor(false);
+    });
+
+    return () => abonelik();
+  }, []);
+
+  const antrenmanEkle = async () => {
+    if (!yeniBaslik) {
+      alert("Lütfen antrenman adını girin.");
+      return;
+    }
+    if (!kullanici) {
+      alert("Hata: Oturum açılmamış!");
+      return;
+    }
+
+    setEkleniyor(true);
+    try {
+      const yeniVeri = {
+        baslik: yeniBaslik,
+        sure: "Serbest",
+        seviye: "Kişisel",
+        renk: "#AF52DE",
+        ikon: "flash",
+        userId: kullanici.uid,
+      };
+
+      const docRef = await addDoc(collection(db, "antrenmanlar"), yeniVeri);
+
+      const kucukBaslik = yeniBaslik.toLocaleLowerCase('tr-TR');
+      let varsayilanHareketler: { ad: string; setTekrar: string }[] = [];
+
+      if (kucukBaslik.includes("göğüs") || kucukBaslik.includes("gogus")) {
+        varsayilanHareketler = [
+          { ad: "Bench Press", setTekrar: "4 Set x 10 Tekrar" },
+          { ad: "Incline Dumbbell Press", setTekrar: "3 Set x 12 Tekrar" },
+          { ad: "Dumbbell Fly", setTekrar: "3 Set x 12 Tekrar" },
+          { ad: "Şınav", setTekrar: "3 Set x Maksimum" },
+        ];
+      } else if (kucukBaslik.includes("sırt") || kucukBaslik.includes("sirt")) {
+        varsayilanHareketler = [
+          { ad: "Lat Pulldown", setTekrar: "4 Set x 12 Tekrar" },
+          { ad: "Barbell Row", setTekrar: "4 Set x 10 Tekrar" },
+          { ad: "Seated Cable Row", setTekrar: "3 Set x 12 Tekrar" },
+          { ad: "Barfiks", setTekrar: "3 Set x Maksimum" },
+        ];
+      } else if (kucukBaslik.includes("bacak")) {
+        varsayilanHareketler = [
+          { ad: "Squat", setTekrar: "4 Set x 10 Tekrar" },
+          { ad: "Leg Press", setTekrar: "4 Set x 12 Tekrar" },
+          { ad: "Leg Extension", setTekrar: "3 Set x 15 Tekrar" },
+          { ad: "Lunge", setTekrar: "3 Set x 12 Tekrar" },
+        ];
+      } else if (
+        kucukBaslik.includes("kol") ||
+        kucukBaslik.includes("pazu") ||
+        kucukBaslik.includes("triceps")
+      ) {
+        varsayilanHareketler = [
+          { ad: "Biceps Curl (Pazu)", setTekrar: "4 Set x 12 Tekrar" },
+          { ad: "Hammer Curl", setTekrar: "3 Set x 12 Tekrar" },
+          { ad: "Triceps Pushdown (Arka Kol)", setTekrar: "4 Set x 12 Tekrar" },
+        ];
+      }
+
+      for (const hareket of varsayilanHareketler) {
+        await addDoc(collection(db, "egzersizler"), {
+          antrenmanId: docRef.id,
+          ad: hareket.ad,
+          setTekrar: hareket.setTekrar,
+        });
+      }
+
+      setAntrenmanlar([...antrenmanlar, { id: docRef.id, ...yeniVeri }]);
+      setYeniBaslik("");
+
+      if (varsayilanHareketler.length > 0) {
+        alert(
+          `Harika! "${yeniBaslik}" eklendi ve içine ${varsayilanHareketler.length} adet temel hareket senin için otomatik yerleştirildi!`,
+        );
+      }
+    } catch (error: any) {
+      alert("Firebase Hatası: " + error.message);
+    }
+    setEkleniyor(false);
+  };
+
+  if (yukleniyor) {
+    return (
+      <View style={[styles.container, styles.merkezle]}>
+        <ActivityIndicator size="large" color="#FF3B30" />
+        <Text style={styles.yukleniyorMetni}>
+          Senin Antrenmanların Yükleniyor...
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollIci}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.baslikKismi}>
+          <Text style={styles.selamlama}>Merhaba Şampiyon,</Text>
+          <Text style={styles.anaBaslik}>Antrenman Programın</Text>
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <View style={styles.formKutusu}>
+          <TextInput
+            style={styles.input}
+            placeholder="Yeni Antrenman (Örn: Göğüs Günü)"
+            placeholderTextColor="#666"
+            value={yeniBaslik}
+            onChangeText={setYeniBaslik}
+          />
+          <TouchableOpacity
+            style={styles.ekleButonu}
+            onPress={antrenmanEkle}
+            disabled={ekleniyor}
+            activeOpacity={0.7}
+          >
+            {ekleniyor ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Ionicons name="add" size={28} color="#fff" />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {antrenmanlar.length === 0 ? (
+          <View style={styles.bosDurum}>
+            <Ionicons name="document-text-outline" size={50} color="#333" />
+            <Text style={styles.bosMetin}>
+              Henüz sana ait bir antrenman yok. Yukarıdan ilk programını
+              oluştur!
+            </Text>
+          </View>
+        ) : (
+          antrenmanlar.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.kart}
+              onPress={() =>
+                router.push({
+                  pathname: "/antrenman/[id]",
+                  params: { id: item.id, baslik: item.baslik, sure: item.sure },
+                })
+              }
+            >
+              <View
+                style={[
+                  styles.ikonKutusu,
+                  { backgroundColor: item.renk || "#333" },
+                ]}
+              >
+                <Ionicons
+                  name={(item.ikon || "barbell") as any}
+                  size={28}
+                  color="#fff"
+                />
+              </View>
+
+              <View style={styles.kartBilgi}>
+                <Text style={styles.kartBaslik}>{item.baslik}</Text>
+                <Text style={styles.kartDetay}>
+                  {item.sure} • {item.seviye}
+                </Text>
+              </View>
+
+              <Ionicons name="chevron-forward" size={24} color="#666" />
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1, backgroundColor: "#121212" },
+  merkezle: { justifyContent: "center", alignItems: "center" },
+  yukleniyorMetni: { color: "#fff", marginTop: 15, fontSize: 16 },
+  scrollIci: { padding: 20, paddingBottom: 60 },
+  baslikKismi: { marginBottom: 20, marginTop: 40 },
+  selamlama: { fontSize: 18, color: "#a0a0a0", marginBottom: 5 },
+  anaBaslik: { fontSize: 28, fontWeight: "bold", color: "#fff" },
+
+  formKutusu: { flexDirection: "row", marginBottom: 30 },
+  input: {
+    flex: 1,
+    backgroundColor: "#1e1e1e",
+    color: "#fff",
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333",
+    fontSize: 16,
+    marginRight: 10,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  ekleButonu: {
+    backgroundColor: "#FF3B30",
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+
+  bosDurum: { alignItems: "center", marginTop: 40 },
+  bosMetin: {
+    color: "#888",
+    textAlign: "center",
+    marginTop: 15,
+    fontSize: 16,
+    paddingHorizontal: 20,
   },
+
+  kart: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1e1e1e",
+    padding: 15,
+    borderRadius: 16,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+  },
+  ikonKutusu: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  kartBilgi: { flex: 1 },
+  kartBaslik: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 4,
+  },
+  kartDetay: { fontSize: 14, color: "#888" },
 });

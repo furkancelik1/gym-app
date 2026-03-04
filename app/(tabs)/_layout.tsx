@@ -1,33 +1,65 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+// app/(tabs)/_layout.tsx
+import { Ionicons } from "@expo/vector-icons"; // Expo'da ikonlar hazır yüklü gelir!
+import { Tabs } from "expo-router";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: "#FF3B30", // Aktif sekmenin rengi (Kırmızı)
+        tabBarInactiveTintColor: "#888888", // Pasif sekmenin rengi (Gri)
+        tabBarStyle: {
+          backgroundColor: "#1e1e1e", // Alt menünün karanlık arka planı
+          borderTopWidth: 0, // Üstteki ince çizgiyi kaldırır
+        },
+        headerStyle: {
+          backgroundColor: "#121212", // Üstteki başlık barının arka planı
+        },
+        headerTintColor: "#fff", // Üst başlık yazısının rengi
+        headerTitleAlign: "center", // Başlığı ortala
+      }}
+    >
+      {/* 1. Sekme: Ana Sayfa */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Ana Sayfa",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home" size={24} color={color} />
+          ),
         }}
       />
+
+      {/* 2. Sekme: Profil */}
       <Tabs.Screen
-        name="explore"
+        name="profil"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "Profil",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person-circle" size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* 3. Sekme: Hedeflerim */}
+      <Tabs.Screen
+        name="hedef"
+        options={{
+          title: "Hedeflerim",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="stats-chart" size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* 4. Sekme: Liderlik */}
+      <Tabs.Screen
+        name="liderlik"
+        options={{
+          title: "Liderlik",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="trophy" size={24} color={color} />
+          ),
         }}
       />
     </Tabs>
