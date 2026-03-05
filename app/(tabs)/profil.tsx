@@ -25,18 +25,32 @@ export default function ProfilScreen() {
 
   useEffect(() => {
     const profilGetir = async () => {
-      if (!kullanici) return;
+      // 1. Kullanıcı oturum açmamışsa bekleme, direkt kapat
+      if (!auth.currentUser) {
+        console.log("Kullanıcı oturumu bulunamadı.");
+        setYukleniyor(false);
+        return;
+      }
+
       try {
-        const docRef = doc(db, "hedefler", kullanici.uid);
+        console.log("Veri çekiliyor: ", auth.currentUser.uid);
+        const docRef = doc(db, "hedefler", auth.currentUser.uid);
         const docSnap = await getDoc(docRef);
+
         if (docSnap.exists()) {
           setIsim(docSnap.data().displayName || "");
+        } else {
+          console.log("Kullanıcı dökümanı henüz yok.");
         }
       } catch (error) {
-        console.error(error);
+        // Hatanın ne olduğunu konsolda kırmızı yazıyla göreceğiz
+        console.error("Firebase Veri Çekme Hatası:", error);
+      } finally {
+        // HATA ALSA DA ALMASA DA ÇARK DÖNMEYİ BIRAKSIN
+        setYukleniyor(false);
       }
-      setYukleniyor(false);
     };
+
     profilGetir();
   }, []);
 
@@ -53,7 +67,10 @@ export default function ProfilScreen() {
         { displayName: isim, userId: kullanici.uid },
         { merge: true },
       );
-      Alert.alert("Başarılı", "Profilin güncellendi! Artık sıralamada bu isimle görüneceksin.");
+      Alert.alert(
+        "Başarılı",
+        "Profilin güncellendi! Artık sıralamada bu isimle görüneceksin.",
+      );
     } catch {
       Alert.alert("Hata", "Güncellenemedi.");
     }
@@ -99,7 +116,11 @@ export default function ProfilScreen() {
           placeholder="Adın veya Lakabın"
           placeholderTextColor="#444"
         />
-        <TouchableOpacity style={styles.buton} onPress={profilGuncelle} disabled={guncelleniyor}>
+        <TouchableOpacity
+          style={styles.buton}
+          onPress={profilGuncelle}
+          disabled={guncelleniyor}
+        >
           <Text style={styles.butonMetni}>
             {guncelleniyor ? "Kaydediliyor..." : "Profilini Kaydet"}
           </Text>
@@ -115,8 +136,18 @@ export default function ProfilScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#121212", padding: 25, paddingTop: 80 },
-  merkezle: { flex: 1, backgroundColor: "#121212", justifyContent: "center", alignItems: "center" },
+  container: {
+    flex: 1,
+    backgroundColor: "#121212",
+    padding: 25,
+    paddingTop: 80,
+  },
+  merkezle: {
+    flex: 1,
+    backgroundColor: "#121212",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   profilBaslik: { alignItems: "center", marginBottom: 40 },
   avatarDaire: {
     width: 100,
@@ -128,11 +159,43 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   eposta: { color: "#8e8e93", fontSize: 16 },
-  form: { backgroundColor: "#1c1c1e", padding: 20, borderRadius: 20, marginBottom: 30 },
-  label: { color: "#8e8e93", fontSize: 13, marginBottom: 10, fontWeight: "600" },
-  input: { backgroundColor: "#2c2c2e", color: "#fff", padding: 15, borderRadius: 12, fontSize: 18 },
-  buton: { backgroundColor: "#007AFF", padding: 15, borderRadius: 12, alignItems: "center", marginTop: 20 },
+  form: {
+    backgroundColor: "#1c1c1e",
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 30,
+  },
+  label: {
+    color: "#8e8e93",
+    fontSize: 13,
+    marginBottom: 10,
+    fontWeight: "600",
+  },
+  input: {
+    backgroundColor: "#2c2c2e",
+    color: "#fff",
+    padding: 15,
+    borderRadius: 12,
+    fontSize: 18,
+  },
+  buton: {
+    backgroundColor: "#007AFF",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 20,
+  },
   butonMetni: { color: "#fff", fontWeight: "bold", fontSize: 16 },
-  cikisButon: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 15 },
-  cikisMetni: { color: "#FF3B30", fontSize: 16, fontWeight: "bold", marginLeft: 8 },
+  cikisButon: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 15,
+  },
+  cikisMetni: {
+    color: "#FF3B30",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
 });
