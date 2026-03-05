@@ -1,17 +1,18 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth"; // YENİ EKLENDİ
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// Değerleri Render panelindeki Environment Variables kısmından çeker
 const firebaseConfig = {
-  apiKey: "AIzaSyBoou4x3aOxl1Mae_mBnhkl0nL3KmuU0BE",
-  authDomain: "gym-app-6ecd7.firebaseapp.com",
-  projectId: "gym-app-6ecd7",
-  storageBucket: "gym-app-6ecd7.firebasestorage.app",
-  messagingSenderId: "382843081725",
-  appId: "1:382843081725:web:5b780b0afa13c10ff2bf94",
-  measurementId: "G-J4TVV7J8H5",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-export const auth = getAuth(app); // YENİ EKLENDİ: Diğer sayfalarda kullanmak için dışa aktarıyoruz
+export const auth = getAuth(app);
