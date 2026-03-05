@@ -83,9 +83,15 @@ export default function ProfilScreen() {
       {
         text: "Çıkış Yap",
         style: "destructive",
-        onPress: () => {
-          signOut(auth);
-          router.replace("/login");
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            // EĞER login sayfan (tabs) klasörünün dışındaysa /login yaz
+            // Eğer giriş sistemini henüz yapmadıysan / ana sayfaya atabiliriz
+            router.replace("/");
+          } catch (error) {
+            console.error("Çıkış hatası:", error);
+          }
         },
       },
     ]);

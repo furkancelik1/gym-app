@@ -1,5 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { auth, db } from "../../firebaseConfig";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,10 +14,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth, db } from "../../firebaseConfig";
 
 export default function HedefScreen() {
-  const kullanici = auth.currentUser;
+  const router = useRouter();
+  const [kullanici, setKullanici] = useState<User | null>(null);
   const [kilo, setKilo] = useState("");
   const [hedefKilo, setHedefKilo] = useState("");
   const [haftalikHedef, setHaftalikHedef] = useState("3");
@@ -22,24 +25,26 @@ export default function HedefScreen() {
   const [yukleniyor, setYukleniyor] = useState(true);
 
   useEffect(() => {
-    const verileriGetir = async () => {
-      if (!kullanici) return;
-      try {
-        const docRef = doc(db, "hedefler", kullanici.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setKilo(data.currentKilo || "");
-          setHedefKilo(data.targetKilo || "");
-          setHaftalikHedef(data.weeklyGoal || "3");
-          setPuan(data.toplamPuan || 0);
-        }
-      } catch (error) {
-        console.error(error);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setKullanici(user);
+        getDoc(doc(db, "hedefler", user.uid)).then((docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setKilo(data.kilo?.toString() || "");
+            setHedefKilo(data.hedefKilo?.toString() || "");
+            setHaftalikHedef(data.haftalikHedef?.toString() || "3");
+            setPuan(data.toplamPuan || 0);
+          }
+          setYukleniyor(false);
+        });
+      } else {
+        setKullanici(null);
+        setYukleniyor(false);
+        router.replace("/");
       }
-      setYukleniyor(false);
-    };
-    verileriGetir();
+    });
+    return () => unsubscribe();
   }, []);
 
   const seviyeHesapla = (
@@ -53,7 +58,7 @@ export default function HedefScreen() {
   };
 
   const hedefleriKaydet = async () => {
-    if (!kullanici) return;
+    if (!kullanici || !kullanici.uid) return;
     try {
       await setDoc(
         doc(db, "hedefler", kullanici.uid),
