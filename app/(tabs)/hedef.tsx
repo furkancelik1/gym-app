@@ -37,6 +37,9 @@ export default function HedefScreen() {
             setPuan(data.toplamPuan || 0);
           }
           setYukleniyor(false);
+        }).catch(err => {
+          console.error("Veri hatası:", err);
+          setYukleniyor(false);
         });
       } else {
         setKullanici(null);
